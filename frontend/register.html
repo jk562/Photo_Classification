@@ -191,8 +191,26 @@
       const spinner = document.getElementById('regSpinner');
       btn.disabled = true; spinner.style.display = 'block';
       document.getElementById('regText').textContent = 'Creating account…';
-      await new Promise(r => setTimeout(r, 1800));
-      window.location.href = 'dashboard.html';
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ firstName: fn, lastName: document.getElementById('lastName').value.trim(), username: un, email: em, password: pw })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById('regText').textContent = 'Create Account →';
+          document.getElementById('regSpinner').style.display = 'none';
+          btn.disabled = false;
+          alert(data.error || 'Registration failed');
+          return;
+        }
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        alert('Network error');
+        btn.disabled = false; document.getElementById('regSpinner').style.display = 'none';
+      }
     });
   </script>
 </body>

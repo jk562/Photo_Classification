@@ -120,24 +120,26 @@
       ['#3b82f6','#2563eb'], ['#84cc16','#65a30d'], ['#a855f7','#9333ea'],
     ];
 
-    let persons = [
-      { id:1, name:'Karthik',  count:125, emoji:'👤', color:0, unknown:false },
-      { id:2, name:'Rahul',    count:98,  emoji:'👤', color:1, unknown:false },
-      { id:3, name:'Mom',      count:45,  emoji:'👤', color:2, unknown:false },
-      { id:4, name:'Dad',      count:38,  emoji:'👤', color:3, unknown:false },
-      { id:5, name:'Priya',    count:31,  emoji:'👤', color:4, unknown:false },
-      { id:6, name:'Arjun',    count:22,  emoji:'👤', color:5, unknown:false },
-      { id:7, name:'Sneha',    count:18,  emoji:'👤', color:6, unknown:false },
-      { id:8, name:'Person_8', count:14,  emoji:'👤', color:7, unknown:false },
-      { id:9, name:'Person_9', count:9,   emoji:'👤', color:8, unknown:false },
-      { id:10, name:'Unknown', count:12,  emoji:'❓', color:11, unknown:true },
-    ];
-
-    let filtered = [...persons];
+    let persons = [];
+    let filtered = [];
     let currentView = 'grid';
     let renamingId = null;
 
-    document.getElementById('albumCountBadge').textContent = `(${persons.length})`;
+    async function loadPersons() {
+      try {
+        const res = await fetch('/api/persons');
+        const data = await res.json();
+        if (data.success) {
+          persons = data.persons.map((p, i) => {
+            return { ...p, color: i % COLORS.length };
+          });
+          filtered = [...persons];
+          document.getElementById('albumCountBadge').textContent = `(${persons.length})`;
+          render();
+        }
+      } catch (err) { console.error('Failed to load persons:', err); }
+    }
+    loadPersons();
 
     function renderGrid() {
       document.getElementById('gridView').innerHTML = filtered.map(p => {

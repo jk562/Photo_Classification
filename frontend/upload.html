@@ -180,6 +180,8 @@
   <script>
     let selectedFiles = [];
 
+    let zipFile = null;
+
     function switchTab(name, btn) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.upload-tab').forEach(b => b.classList.remove('active'));
@@ -198,9 +200,11 @@
       if (e.dataTransfer.files[0]) handleZipSelect(e.dataTransfer.files[0]);
     }
     function handleZipSelect(file) {
+      zipFile = file;
       document.getElementById('zipSelected').style.display = 'block';
       document.getElementById('zipName').textContent = file.name;
       document.getElementById('zipSize').textContent = formatSize(file.size);
+      document.getElementById('fileListContainer').style.display = 'block';
     }
 
     function formatSize(bytes) {
@@ -253,35 +257,28 @@
       selectedFiles.splice(i, 1);
       renderFileList();
     }
-    function clearFiles() { selectedFiles = []; renderFileList(); }
+    function clearFiles() { selectedFiles = []; zipFile = null; document.getElementById('zipSelected').style.display = 'none'; renderFileList(); }
 
-    function startUpload() {
-      if (!selectedFiles.length) return;
+    async function startUpload() {
+      if (!selectedFiles.length && !zipFile) return;
       const btn = document.getElementById('startUploadBtn');
       btn.disabled = true; btn.textContent = '⏳ Uploading…';
-      let done = 0;
-      const total = selectedFiles.length;
-
-      selectedFiles.forEach((_, i) => {
-        const delay = i * 300 + Math.random() * 200;
-        setTimeout(() => {
-          const el = document.getElementById('status-' + i);
-          if (el) { el.textContent = 'Uploading'; el.className = 'file-status uploading'; }
-          setTimeout(() => {
-            if (el) { el.textContent = '✓ Done'; el.className = 'file-status done'; }
-            done++;
-            const pct = Math.round((done / total) * 100);
-            document.getElementById('uploadBar').style.width = pct + '%';
-            document.getElementById('uploadPct').textContent = pct + '%';
-            document.getElementById('uploadLabel').textContent = `Uploading ${done} of ${total}…`;
-            if (done === total) {
-              btn.textContent = '✓ Upload Complete!';
-              document.getElementById('uploadLabel').textContent = 'All files uploaded successfully!';
-              setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
-            }
-          }, 800);
-        }, delay);
-      });
+      // build form data
+      const fd = new FormData();
+      selectedFiles.forEach(f => fd.append('files', f));
+      if (zipFile) fd.append('files', zipFile);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Upload failed'); btn.disabled = false; btn.textContent = '🚀 Upload & Process'; return; }
+        document.getElementById('uploadBar').style.width = '100%';
+        document.getElementById('uploadPct').textContent = '100%';
+        document.getElementById('uploadLabel').textContent = `Uploaded ${data.uploaded} files`;
+        btn.textContent = '✓ Upload Complete!';
+        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+      } catch (err) {
+        alert('Network error'); btn.disabled = false; btn.textContent = '🚀 Upload & Process';
+      }
     }
   </script>
 </body>

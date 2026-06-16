@@ -184,24 +184,37 @@
         <div class="stat-change up">↑ ${s.change}</div>
       </div>`).join('');
 
-    // Top persons
-    const persons = [
-      { name:'Karthik', count:125, pct:78, grad:'#7c3aed,#a855f7', emoji:'👤' },
-      { name:'Rahul',   count:98,  pct:61, grad:'#06b6d4,#0284c7', emoji:'👤' },
-      { name:'Mom',     count:45,  pct:28, grad:'#ec4899,#f43f5e', emoji:'👤' },
-      { name:'Unknown', count:12,  pct:8,  grad:'#475569,#64748b', emoji:'❓' },
-    ];
-    document.getElementById('personList').innerHTML = persons.map(p => `
-      <a href="bucket-detail.html" class="person-list-item">
-        <div class="person-avatar" style="background:linear-gradient(135deg,${p.grad})">${p.emoji}</div>
-        <div class="person-info">
-          <div class="person-name">${p.name}</div>
-          <div class="person-count">${p.count} photos</div>
-          <div class="person-progress">
-            <div class="progress-bar" style="margin-top:4px;"><div class="progress-fill" style="width:${p.pct}%"></div></div>
+    let persons = [];
+    async function loadPersons() {
+      try {
+        const res = await fetch('/api/persons');
+        const data = await res.json();
+        if (data.success) {
+          persons = data.persons.map((p, i) => {
+            const grads = ['#7c3aed,#a855f7', '#06b6d4,#0284c7', '#ec4899,#f43f5e', '#10b981,#059669', '#f59e0b,#d97706'];
+            const pct = Math.min(100, Math.round((p.count / 100) * 100)); // simple placeholder %
+            return { ...p, pct: pct || 5, grad: grads[i % grads.length] };
+          });
+          renderDashboardPersons();
+        }
+      } catch (err) { console.error('Failed to load persons:', err); }
+    }
+
+    function renderDashboardPersons() {
+      document.getElementById('personList').innerHTML = persons.map(p => `
+        <a href="results.html" class="person-list-item">
+          <div class="person-avatar" style="background:linear-gradient(135deg,${p.grad})">${p.emoji}</div>
+          <div class="person-info">
+            <div class="person-name">${p.name}</div>
+            <div class="person-count">${p.count} photos</div>
+            <div class="person-progress">
+              <div class="progress-bar" style="margin-top:4px;"><div class="progress-fill" style="width:${p.pct}%"></div></div>
+            </div>
           </div>
-        </div>
-      </a>`).join('');
+        </a>`).join('');
+    }
+
+    loadPersons();
 
     // Activity
     const activities = [

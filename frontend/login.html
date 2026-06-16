@@ -137,11 +137,27 @@
       const txt = document.getElementById('loginText');
       btn.disabled = true; spinner.style.display = 'block'; txt.textContent = 'Signing in…';
 
-      // Simulate API call
-      await new Promise(r => setTimeout(r, 1500));
-
-      // On success → redirect to dashboard
-      window.location.href = 'dashboard.html';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email, password: pass })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById('loginError').textContent = data.error || 'Login failed';
+          document.getElementById('loginError').classList.add('show');
+          btn.disabled = false; spinner.style.display = 'none'; txt.textContent = 'Sign In →';
+          return;
+        }
+        // success
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        document.getElementById('loginError').textContent = 'Network error';
+        document.getElementById('loginError').classList.add('show');
+        btn.disabled = false; spinner.style.display = 'none'; txt.textContent = 'Sign In →';
+      }
     });
   </script>
 </body>
