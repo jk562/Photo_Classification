@@ -58,7 +58,7 @@
 
   <!-- NAVBAR -->
   <nav class="navbar">
-    <a href="index.html" class="nav-logo">
+    <a href="dashboard.html" class="nav-logo">
       <div class="logo-icon">🔍</div>
       FaceVault
     </a>
@@ -68,7 +68,7 @@
       <a href="results.html" class="nav-link">Albums</a>
       <a href="search.html" class="nav-link">Search</a>
       <div class="dropdown">
-        <div class="nav-avatar" id="avatarBtn">K</div>
+        <div class="nav-avatar" id="avatarBtn">?</div>
         <div class="dropdown-menu">
           <a href="#" class="dropdown-item">👤 Profile</a>
           <a href="#" class="dropdown-item">⚙️ Settings</a>
@@ -82,7 +82,7 @@
   <div class="page-wrapper">
     <div class="container section">
       <div class="page-header fade-up">
-        <h1>Good afternoon, <span class="gradient-text">Karthik</span> 👋</h1>
+        <h1>Welcome, <span class="gradient-text" id="greetName">...</span> 👋</h1>
         <p>Here's what's happening with your photo library today.</p>
       </div>
 
@@ -169,20 +169,41 @@
   </div>
 
   <script>
-    // Stats data
-    const stats = [
-      { icon:'🖼️', number:'1,284', label:'Photos Uploaded', color:'purple', change:'+45 today' },
-      { icon:'😊', number:'3,892', label:'Faces Detected', color:'cyan', change:'+138 today' },
-      { icon:'👥', number:'12', label:'Unique People', color:'green', change:'+2 new' },
-      { icon:'📁', number:'12', label:'Albums Created', color:'pink', change:'Auto-organized' },
-    ];
-    document.getElementById('statsGrid').innerHTML = stats.map(s => `
-      <div class="card stat-card">
-        <div class="stat-icon ${s.color}">${s.icon}</div>
-        <div class="stat-number gradient-text">${s.number}</div>
-        <div class="stat-label">${s.label}</div>
-        <div class="stat-change up">↑ ${s.change}</div>
-      </div>`).join('');
+    // Load logged-in user info
+    async function loadUser() {
+      try {
+        const res = await fetch('/api/me');
+        if (!res.ok) { window.location.href = 'login.html'; return; }
+        const data = await res.json();
+        if (!data.success) { window.location.href = 'login.html'; return; }
+        document.getElementById('greetName').textContent = data.first_name;
+        document.getElementById('avatarBtn').textContent = data.first_name[0].toUpperCase();
+      } catch (err) { console.error('Failed to load user:', err); }
+    }
+    loadUser();
+
+    // Stats — fetched from backend
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        if (!data.success) return;
+        const stats = [
+          { icon:'🖼️', number: data.total_photos.toLocaleString(), label:'Photos Uploaded', color:'purple', change:'ML classified' },
+          { icon:'👤', number: data.person_photos.toLocaleString(), label:'People Photos', color:'cyan', change:'Individual Person' },
+          { icon:'📂', number: data.total_categories.toLocaleString(), label:'Categories Found', color:'green', change:'Auto-organized' },
+          { icon:'🤖', number: data.total_categories.toLocaleString(), label:'ML Albums', color:'pink', change:'MobileNetV2' },
+        ];
+        document.getElementById('statsGrid').innerHTML = stats.map(s => `
+          <div class="card stat-card">
+            <div class="stat-icon ${s.color}">${s.icon}</div>
+            <div class="stat-number gradient-text">${s.number}</div>
+            <div class="stat-label">${s.label}</div>
+            <div class="stat-change up">↑ ${s.change}</div>
+          </div>`).join('');
+      } catch (err) { console.error('Stats failed:', err); }
+    }
+    loadStats();
 
     let persons = [];
     async function loadPersons() {

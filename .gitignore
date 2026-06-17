@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Database
+backend/data.db
+
+# Uploads (user-generated content)
+backend/uploads/
+
+# ML model weights (large binary)
+backend/yolov8n.pt

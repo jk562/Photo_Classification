@@ -54,7 +54,7 @@
   <div class="bg-orb bg-orb-2"></div>
 
   <nav class="navbar">
-    <a href="index.html" class="nav-logo"><div class="logo-icon">🔍</div>FaceVault</a>
+    <a href="dashboard.html" class="nav-logo"><div class="logo-icon">🔍</div>FaceVault</a>
     <div class="nav-links">
       <a href="dashboard.html" class="nav-link">Dashboard</a>
       <a href="upload.html" class="nav-link">Upload</a>
@@ -156,29 +156,57 @@
   </div>
 
   <script>
-    const EMOJIS = ['🖼️','📷','🎞️','🌄','🌅','🌃','🏙️','🌇'];
-    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun'];
-    const photos = Array.from({length:125}, (_, i) => ({
-      id: i+1,
-      emoji: EMOJIS[i % EMOJIS.length],
-      date: `${MONTHS[i%6]} ${Math.ceil(i/20)+1}, 2026`,
-      confidence: (85 + Math.random()*15).toFixed(1),
-      selected: false,
-    }));
+    const EMOJI_MAP = {
+      'Individual Person': '👤', 'Vehicle': '🚗', 'Food': '🍕',
+      'Pet': '🐾', 'Place/Landmark': '🏛️', 'Environment': '🌿', 'Uncategorized': '❓',
+    };
 
+    const category = new URLSearchParams(location.search).get('category') || 'Uncategorized';
+    const emoji = EMOJI_MAP[category] || '🖼️';
+
+    // Set static header elements
+    document.title = category + ' – Album Detail · FaceVault';
+    document.getElementById('personName').textContent = category;
+    document.getElementById('nameInput').value = category;
+    document.querySelector('.breadcrumb span').textContent = category;
+    document.querySelector('.bucket-avatar').textContent = emoji;
+
+    let photos = [];
     let currentLbIdx = 0;
 
+    async function loadImages() {
+      try {
+        const res = await fetch('/api/images?category=' + encodeURIComponent(category));
+        const data = await res.json();
+        if (data.success) {
+          photos = data.images.map(img => ({ ...img, selected: false }));
+          document.getElementById('photoCount').textContent = `(${photos.length} photos)`;
+          document.querySelector('.meta-item strong').textContent = photos.length;
+          renderGrid();
+        }
+      } catch (err) { console.error('Failed to load images:', err); }
+    }
+    loadImages();
+
     function renderGrid() {
-      document.getElementById('photoGrid').innerHTML = photos.map((p,i) => `
-        <div class="photo-cell ${p.selected?'selected':''}" id="pc-${i}" onclick="toggleSelect(${i},event)">
+      if (!photos.length) {
+        document.getElementById('photoGrid').innerHTML =
+          '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)">No photos in this album yet.</div>';
+        return;
+      }
+      document.getElementById('photoGrid').innerHTML = photos.map((p, i) => `
+        <div class="photo-cell ${p.selected ? 'selected' : ''}" id="pc-${i}" onclick="toggleSelect(${i},event)">
           <div class="check">✓</div>
-          <span style="font-size:2.5rem">${p.emoji}</span>
-          <span class="photo-date">${p.date}</span>
+          <img src="${p.url}" alt="${p.filename}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"
+               onerror="this.style.display='none';this.nextSibling.style.display='flex'" />
+          <span style="display:none;font-size:2.5rem;align-items:center;justify-content:center;width:100%;height:100%">${emoji}</span>
+          <span class="photo-date">${p.upload_date ? p.upload_date.slice(0,10) : ''}</span>
+          <span style="position:absolute;bottom:6px;right:6px;font-size:0.65rem;color:rgba(255,255,255,0.7);background:rgba(0,0,0,0.5);padding:2px 5px;border-radius:4px">${p.confidence.toFixed(1)}%</span>
         </div>`).join('');
     }
 
     function toggleSelect(i, e) {
-      if (e.detail === 2) { openLightbox(i); return; } // double-click → lightbox
+      if (e.detail === 2) { openLightbox(i); return; }
       photos[i].selected = !photos[i].selected;
       const cell = document.getElementById('pc-' + i);
       cell.classList.toggle('selected', photos[i].selected);
@@ -206,8 +234,11 @@
 
     function openLightbox(i) {
       currentLbIdx = i;
-      document.getElementById('lbContent').textContent = photos[i].emoji;
-      document.getElementById('lbInfo').textContent = `Photo ${i+1} of ${photos.length} · ${photos[i].date} · ${photos[i].confidence}% confidence`;
+      const p = photos[i];
+      const content = document.getElementById('lbContent');
+      content.innerHTML = `<img src="${p.url}" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:12px;" />`;
+      document.getElementById('lbInfo').textContent =
+        `${p.filename} · ${p.upload_date ? p.upload_date.slice(0,10) : ''} · ${p.confidence.toFixed(1)}% confidence`;
       document.getElementById('lightbox').classList.add('open');
     }
     function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
@@ -228,13 +259,15 @@
       if (n) { document.getElementById('personName').textContent = n; document.title = n + ' – Album Detail · FaceVault'; }
       cancelRename();
     }
-    function downloadBucket() { alert('⬇️ Generating ZIP archive for Karthik…\n\nThis would trigger a backend download in the full app.'); }
-    function openMerge() { alert('🔀 Merge with another album feature\n\nSelect a target album to combine Karthik's photos with another person.'); }
-    function rerunClustering() { if (confirm('Re-run AI clustering on this album?')) alert('🔄 Clustering job queued. Check dashboard for progress.'); }
-    function deleteBucket() { if (confirm('Delete this album? Photos will remain in your library.')) window.location.href = 'results.html'; }
-    function sortPhotos(v) { /* in full app: sort photos array and re-render */ }
-
-    renderGrid();
+    function downloadBucket() { alert('ZIP download coming soon.'); }
+    function rerunClustering() { if (confirm('Re-run AI clustering?')) alert('Clustering job queued.'); }
+    function deleteBucket() { if (confirm('Delete this album?')) window.location.href = 'results.html'; }
+    function sortPhotos(v) {
+      if (v === 'Oldest First') photos.sort((a, b) => a.upload_date > b.upload_date ? 1 : -1);
+      else if (v === 'By Confidence') photos.sort((a, b) => b.confidence - a.confidence);
+      else photos.sort((a, b) => a.upload_date < b.upload_date ? 1 : -1);
+      renderGrid();
+    }
   </script>
 </body>
 </html>

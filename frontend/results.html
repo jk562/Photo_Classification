@@ -49,7 +49,7 @@
   <div class="bg-orb bg-orb-2"></div>
 
   <nav class="navbar">
-    <a href="index.html" class="nav-logo"><div class="logo-icon">🔍</div>FaceVault</a>
+    <a href="dashboard.html" class="nav-logo"><div class="logo-icon">🔍</div>FaceVault</a>
     <div class="nav-links">
       <a href="dashboard.html" class="nav-link">Dashboard</a>
       <a href="upload.html" class="nav-link">Upload</a>
@@ -123,21 +123,25 @@
     let persons = [];
     let filtered = [];
     let currentView = 'grid';
-    let renamingId = null;
 
     async function loadPersons() {
       try {
-        const res = await fetch('/api/persons');
+        const res = await fetch('/api/categories');
         const data = await res.json();
         if (data.success) {
-          persons = data.persons.map((p, i) => {
-            return { ...p, color: i % COLORS.length };
-          });
+          persons = data.categories.map((c, i) => ({
+            id: i + 1,
+            name: c.category,
+            count: c.count,
+            emoji: c.emoji,
+            unknown: c.category === 'Uncategorized',
+            color: i % COLORS.length,
+          }));
           filtered = [...persons];
           document.getElementById('albumCountBadge').textContent = `(${persons.length})`;
           render();
         }
-      } catch (err) { console.error('Failed to load persons:', err); }
+      } catch (err) { console.error('Failed to load categories:', err); }
     }
     loadPersons();
 
@@ -175,16 +179,14 @@
       document.getElementById('listView').innerHTML = filtered.map(p => {
         const [c1,c2] = COLORS[p.color % COLORS.length];
         return `
-        <a class="person-list-row" href="bucket-detail.html">
+        <a class="person-list-row" href="bucket-detail.html?category=${encodeURIComponent(p.name)}">
           <div class="person-list-avatar" style="background:linear-gradient(135deg,${c1},${c2})">${p.emoji}</div>
           <div class="person-list-info">
             <div class="person-list-name">${p.name}</div>
-            <div class="person-list-sub">${p.count} photos · ${p.unknown ? 'Unidentified' : 'Identified'}</div>
+            <div class="person-list-sub">${p.count} photos · ML classified</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;" onclick="event.stopPropagation()">
-            <button class="card-action-btn" onclick="openRename(${p.id},'${p.name}')">✏️</button>
-            <button class="card-action-btn">📥</button>
-            <a href="bucket-detail.html" class="btn btn-outline btn-sm">View →</a>
+            <a href="bucket-detail.html?category=${encodeURIComponent(p.name)}" class="btn btn-outline btn-sm">View →</a>
           </div>
         </a>`;
       }).join('') || emptyState();
@@ -215,7 +217,10 @@
       if (by === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
       render();
     }
-    function goToBucket(id) { window.location.href = 'bucket-detail.html'; }
+    function goToBucket(id) {
+      const p = persons.find(x => x.id === id);
+      if (p) window.location.href = 'bucket-detail.html?category=' + encodeURIComponent(p.name);
+    }
     function openRename(id, name) {
       renamingId = id;
       document.getElementById('renameInput').value = name;
